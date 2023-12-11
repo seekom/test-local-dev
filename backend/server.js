@@ -1,5 +1,6 @@
 const express = require("express");
 const mysql = require("mysql2");
+const {Pool} = require("pg");
 var cors = require("cors");
 const bodyParser = require("body-parser");
 
@@ -9,17 +10,18 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Create a connection to the MySQL database
-const mysqlConfig = {
+const pgConfig = {
   host: process.env.DB_HOST || "db",
-  port: process.env.DB_PORT || "3306",
-  user: process.env.DB_USER || "root",
+  port: process.env.DB_PORT || "5432",
+  user: process.env.DB_USER || "user",
   password: process.env.DB_PASSWORD || "pass123",
   database: process.env.DB_NAME || "appdb",
 };
 
 let con = null;
 const databaseInit = () => {
-  con = mysql.createConnection(mysqlConfig);
+  // con = mysql.createConnection(mysqlConfig);
+  con = new Pool(pgConfig);
   con.connect((err) => {
     if (err) {
       console.error("Error connecting to the database: ", err);
@@ -30,7 +32,7 @@ const databaseInit = () => {
 };
 
 const createDatabase = () => {
-  con.query("CREATE DATABASE IF NOT EXISTS appdb", (err, results) => {
+  con.query("CREATE DATABASE appdb", (err, results) => {
     if (err) {
       console.error(err);
       return;
@@ -41,7 +43,7 @@ const createDatabase = () => {
 
 const createTable = () => {
   con.query(
-    "CREATE TABLE IF NOT EXISTS apptb (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))",
+    "CREATE TABLE IF NOT EXISTS apptb (id SERIAL PRIMARY KEY, name VARCHAR(255))",
     (err, results) => {
       if (err) {
         console.error(err);
@@ -60,7 +62,7 @@ app.get("/user", (req, res) => {
       console.error(err);
       res.status(500).send("Error retrieving data from database");
     } else {
-      res.json(results);
+      res.json(results.rows);
     }
   });
 });
@@ -68,14 +70,14 @@ app.get("/user", (req, res) => {
 // POST request
 app.post("/user", (req, res) => {
   con.query(
-    "INSERT INTO apptb (name) VALUES (?)",
+    "INSERT INTO apptb (name) VALUES ($1)",
     [req.body.data],
     (err, results) => {
       if (err) {
         console.error(err);
         res.status(500).send("Error retrieving data from database");
       } else {
-        res.json(results);
+        res.json(results.rows);
       }
     }
   );
@@ -90,7 +92,7 @@ app.post("/dbinit", (req, res) => {
 app.post("/tbinit", (req, res) => {
   databaseInit();
   createTable();
-  res.json("Table created successfully");
+  res.json("Table created successfulliese");
 });
 
 // Start the server
